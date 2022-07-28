@@ -1,0 +1,15 @@
+{
+    "url_prefix":"",
+    "api_port":10443,
+    "distribute_port":10442,
+    "https":false,
+
+    "mongodb_address":"mongodb://name:password@localhost:27017/",
+    "mongodb_dbname":"dynamite",
+
+    "https_keys":"",
+    "https_cert":"",
+
+    "server_hot_reload":false,
+    "debug":false
+}
