@@ -16,9 +16,9 @@ class token_maintainer:
             "enlist_time":int(time.time())
         }
 
-    def user_token_checker(self, token, _id = ""):
-        def _check(token, _id = ""):
-            if _id != "" :
+    def user_token_checker(self, token, _id = None, return_id = False):
+        def _check(token, _id):
+            if _id != None :
                 if _id not in self.user_token.keys():
                     return False
                 if token != self.user_token[_id]["token"]:
@@ -26,13 +26,15 @@ class token_maintainer:
                     return False
                 return True
             else:
-                for x_soudayo in self.user_token:
-                    if token == x_soudayo:
-                        return True
+                for id, context in self.user_token.items():
+                    if context["token"] == token:
+                            return (id if return_id else True)
             return False
-        if not _check(token, _id):
+        result = _check(token, _id)
+        if result == False:
             raise Exception("Invalid token")
-        return True
+        return result
+
 
 security_manager = token_maintainer()
 

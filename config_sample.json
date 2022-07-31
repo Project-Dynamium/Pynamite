@@ -1,7 +1,7 @@
 {
     "url_prefix":"",
-    "api_port":10443,
-    "distribute_port":10442,
+    "game_port":10443,
+    "api_port":10442,
     "https":false,
 
     "mongodb_address":"mongodb://name:password@localhost:27017/",

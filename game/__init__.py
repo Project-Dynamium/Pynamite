@@ -1,6 +1,10 @@
 import json,os,sys
 import motor.motor_asyncio as mongo
 
+import pydantic
+from bson.objectid import ObjectId
+pydantic.json.ENCODERS_BY_TYPE[ObjectId]=str
+
 os.chdir(sys.path[0])
 
 with open("../config.json") as f:

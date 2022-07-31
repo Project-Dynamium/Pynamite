@@ -2,3 +2,4 @@ motor
 strawberry
 uvicorn
 fastapi
+httpx

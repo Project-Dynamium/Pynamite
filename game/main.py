@@ -1,21 +1,21 @@
-from fastapi import FastAPI, Request
+from wsgiref.util import request_uri
+from fastapi import FastAPI, Request, Response
 import uvicorn
 
 from __init__ import *
 from graphQL.handle import *
 
-app = FastAPI()
-
-@app.get(conf["url_prefix"]+"/")
-async def index():
-    return {"No u": ""}
+if conf["debug"]:
+    app = FastAPI()
+else:
+    app = FastAPI(docs_url=None, redoc_url=None)
 
 @app.post(conf["url_prefix"]+"/graphql")
 async def handle(request: Request):
     data = await request.json()
     print(data) # DEBUG
-    if request.headers.get("user-agent") != "dynamite/59 CFNetwork/1333.0.4 Darwin/21.5.0":
-        return graphql_like_error(error_dic["not_from_game_connection"])
+    #if request.headers.get("user-agent") != "dynamite/59 CFNetwork/1333.0.4 Darwin/21.5.0":
+    #   return graphql_like_error(error_dic["not_from_game_connection"])
     
     schema = strawberry.Schema(query = Query, mutation = Mutation, config = StrawberryConfig(auto_camel_case = False))
     if "variables" not in data.keys():
@@ -33,13 +33,25 @@ async def handle(request: Request):
     print("\n\n",graphql_ret.__dict__)
     return graphql_ret.__dict__
 
+from auth import security_manager
+@app.post("/internal/check_login")
+async def handle(request: Request):
+    try:
+        if request.client.host != "127.0.0.1":
+            return Response(status_code=403)
+        data = await request.json()
+        user_id = security_manager.user_token_checker(data["token"],return_id=True)
+        return {"status":200,"_id":user_id}
+    except Exception as e:
+        return {"status":403}
+
 
 if __name__ == "__main__":
     os.chdir(sys.path[0])
     if conf["https"]:
         uvicorn.run("main:app",
             host = "0.0.0.0", 
-            port = conf["api_port"], 
+            port = conf["game_port"], 
             reload = conf["server_hot_reload"],
             ssl_keyfile = conf["https_key"], 
             ssl_certfile = conf["https_cert"]
@@ -47,6 +59,6 @@ if __name__ == "__main__":
     else:
         uvicorn.run("main:app",
             host = "0.0.0.0", 
-            port = conf["api_port"], 
+            port = conf["game_port"], 
             reload = conf["server_hot_reload"]
         )
