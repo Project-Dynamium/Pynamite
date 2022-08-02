@@ -5,11 +5,16 @@ import typing
 from typing import Optional, NewType
 
 # Custom scalars
-from pydantic import NonNegativeInt
+from pydantic import Json, NonNegativeInt
 nonNegativeInt = strawberry.scalar(
     NewType("NonNegativeInt", NonNegativeInt),
     serialize=lambda x:x,
     parse_value=lambda x:int(x),
+)
+pRAP = strawberry.scalar(
+    NewType("pRAP", object),
+    serialize=lambda x:x,
+    parse_value=lambda x:x
 )
 
 # Not really important schema
@@ -25,6 +30,18 @@ class gameVersion:
 class Noter:
     username:str = "not_init"
 
+@strawberry.type
+class RdRecord:
+    randomId:str = "not_init"
+
+@strawberry.type
+class PlayRank:
+    rank: int = 0
+
+@strawberry.type
+class Ranking:
+    isPlayRankUpdated: bool = False
+    playRank: PlayRank = PlayRank()
 # Main
 @strawberry.type
 class User:
@@ -57,6 +74,33 @@ class Set:
     chart:typing.List[Chart] = field(default_factory=lambda :[Chart()])
     noter:Noter = Noter()
 
+@strawberry.type
+class PlayToken:
+    PPTime: str = "1643673600000"
+    playingRecord: RdRecord = RdRecord()
+
+@strawberry.input
+class Mod:
+    narrow: Optional[float]
+    speed: Optional[float]
+    isBleed: Optional[bool]
+    isMirror: Optional[bool]
+
+@strawberry.input
+class PlayRecord:
+    mod: Mod
+    isAlive: Optional[bool] 
+    score: Optional[int]
+    perfect: Optional[int]
+    good: Optional[int]
+    miss: Optional[int]
+
+@strawberry.type
+class AfterPlay:
+    coin: int = -1
+    RThisMonth: int = -1
+    diamond: int = -1
+    ranking: Ranking = Ranking()
 
 # Not really important schema again
 @dataclass

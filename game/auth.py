@@ -35,6 +35,33 @@ class token_maintainer:
         if result == False:
             raise Exception(error_dic["invalid_token"])
         return result
+
+    def store_score_token(self, uid, s_token, sid):
+        self.score_token[uid] = {
+            "uid":uid,
+            "token":s_token,
+            "sid":sid,
+            "enlist_time":int(time.time())
+        }
+
+    def store_score_token(self, uid, s_token, sid):
+        self.score_token[uid] = {
+            "uid":uid,
+            "token":s_token,
+            "sid":sid,
+            "enlist_time":int(time.time())
+        }
+
+    def score_token_checker(self, uid, s_token):
+        def _check(u, s):
+            if self.score_token[uid]["token"] == s_token:
+                return self.score_token[uid]["sid"]
+            else:
+                return False
+        result = _check(uid, s_token)
+        if result == False:
+            raise Exception(error_dic["invalid_token"])
+        return result
              
 security_manager = token_maintainer()
 

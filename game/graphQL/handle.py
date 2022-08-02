@@ -2,7 +2,7 @@ from typing import List
 from .schema import *
 from strawberry.types import Info
 
-import auth, store
+import auth, store, score
 
 @strawberry.type
 class Query:
@@ -23,7 +23,7 @@ class Query:
         rev_date = True if playCountOrder == -1 else False
         ranked = True if isRanked == 1 or isOfficial == 1 else False 
         unranked = True if isRanked == -1 else False 
-        doc = await store.get_store_set(skip,limit,ranked=ranked,unranked=unranked,rev_date=rev_date)
+        doc = await store.get_store_set(skip,limit,ranked=ranked,unranked=unranked,rev_date=rev_date,search=musicTitle)
         result = [
             Set(
                 _id = c["_id"],
@@ -131,10 +131,22 @@ class Query:
 
     @strawberry.field
     # Discription: Should be called as mutation
-    def loginUser(self, 
+    async def loginUser(self, 
             username: Optional[str], 
             password: Optional[str]) -> User:
         return User
+
+    @strawberry.field
+    # {'query': 'mutation ap($bleed:Boolean $alive:Boolean $mirror:Boolean $s:Int $p:Int $g:Int $m:Int $rd: String)
+    # {r:submitAfterPlay(randomId: $rd,playRecord:{mod:{narrow:1.0,speed:1.0,isBleed:$bleed,isMirror:$mirror} 
+    # isAlive:$alive score:$s perfect:$p good:$g miss:$m}){coin RThisMonth diamond ranking{isPlayRankUpdated playRank{rank}}}}', 
+    # 'variables': {'s': , 'p': , 'g': , 'm': , 'bleed': False, 'mirror': False, 'alive': True, 'rd': ''}}
+    # Discription: Should be called as mutation
+    async def submitAfterPlay(self,
+            randomId: Optional[str]
+            ) -> AfterPlay:
+        return AfterPlay()
+
 
 
 @strawberry.type
@@ -147,4 +159,25 @@ class Mutation:
             password: Optional[str]) -> User:
         return await auth.login(username, password, User())
 
-    
+    @strawberry.field
+    # {'query': 'mutation bp($cid:String,$pp:Int){r:submitBeforePlay(chartId:$cid,PPCost:$pp,eventArgs:""){PPTime playingRecord { randomId } }}', 'variables': {'cid': '', 'pp': 0}}
+    # Discription: 开始游玩前请求
+    async def submitBeforePlay(self, info: Info,
+            chartId: Optional[str],
+            PPCost: Optional[int],
+            eventArgs: Optional[str]) -> PlayToken:
+        user_id = auth.security_manager.user_token_checker(info.context, return_id=True)
+        s_token = auth.security_manager.token_generator(user_id+chartId)
+        auth.security_manager.store_score_token(user_id,s_token,chartId)
+        return PlayToken(playingRecord=RdRecord(randomId=s_token))
+
+    @strawberry.field
+    # {'query': 'mutation ap($bleed:Boolean $alive:Boolean $mirror:Boolean $s:Int $p:Int $g:Int $m:Int $rd: String){r:submitAfterPlay(randomId: $rd,playRecord:{mod:{narrow:1.0,speed:1.0,isBleed:$bleed,isMirror:$mirror} isAlive:$alive score:$s perfect:$p good:$g miss:$m}){coin RThisMonth diamond ranking{isPlayRankUpdated playRank{rank}}}}', 'variables': {'s': , 'p': , 'g': , 'm': , 'bleed': False, 'mirror': False, 'alive': True, 'rd': ''}}
+    # Discription: 游玩结束后请求
+    async def submitAfterPlay(self, info: Info,
+            randomId: Optional[str],
+            playRecord: PlayRecord
+            ) -> AfterPlay:
+        user_id = auth.security_manager.user_token_checker(info.context, return_id=True)
+        cid = auth.security_manager.score_token_checker(user_id, randomId)
+        return await score.update_score(user_id,cid,playRecord,AfterPlay())
