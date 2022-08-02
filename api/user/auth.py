@@ -1,6 +1,6 @@
 from __init__ import *
 
-import time, hashlib
+import time, hashlib, httpx
 
 class token_maintainer:
     user_token = {}
@@ -74,3 +74,7 @@ async def login(username, password, sha256=False):
         #access=doc["access"]
         }
     }
+
+async def in_game_check_login(token):
+    req = httpx.post("http://127.0.0.1:10443/internal/check_login",json={"token":token}).json()
+    return req

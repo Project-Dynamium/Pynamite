@@ -7,19 +7,6 @@ import auth, store
 @strawberry.type
 class Query:
     @strawberry.field
-    # {'query': '{r:gameSetting{appVer}}'}
-    # Discription: 会在打开本地谱面列表时请求
-    async def gameSetting(self) -> gameVersion:
-        return gameVersion
-
-    @strawberry.field
-    # Discription: Should be called as mutation
-    def loginUser(self, 
-            username: Optional[str], 
-            password: Optional[str]) -> User:
-        return User
-
-    @strawberry.field
     # {'query': 'query fetchSets($lim:NonNegativeInt $skip:NonNegativeInt $searchTitle:String $orderPlay:Int $orderTime:Int $hidden:Int $official:Int $ranked:Int){r:set(playCountOrder:$orderPlay publishTimeOrder:$orderTime limit:$lim skip:$skip isHidden:$hidden musicTitle:$searchTitle isOfficial:$official isRanked:$ranked){_id introduction coinPrice isGot isRanked noter{username}musicTitle composerName playCount chart{_id difficultyClass difficultyValue}}}
     # Discription: 主商店
     async def set(self, 
@@ -33,8 +20,29 @@ class Query:
             isRanked: Optional[int],
             info: Info) -> typing.List[Set]:
         #auth.security_manager.user_token_checker(info.context)
-        return [Set(),Set(),Set(),Set(),Set(),Set(),Set(),Set(),Set()]
-
+        rev_date = True if playCountOrder == -1 else False
+        ranked = True if isRanked == 1 or isOfficial == 1 else False 
+        unranked = True if isRanked == -1 else False 
+        doc = await store.get_store_set(skip,limit,ranked=ranked,unranked=unranked,rev_date=rev_date)
+        result = [
+            Set(
+                _id = c["_id"],
+                musicTitle = c["musicTitle"],
+                introduction = c["introduction"],
+                coinPrice = 0,
+                isGot = True,
+                isRanked = False,
+                composerName = c["composerName"],
+                playCount = 0,
+                chart = [
+                    Chart(_id=i["_id"],difficultyClass=i["difficultyClass"],difficultyValue=i["difficultyValue"])
+                    for i in c["chart"]
+                ],
+                noter = Noter(username=c["noter"]["userName"])
+            )
+            for c in doc
+        ]
+        return result
 
     @strawberry.field
     # {'query': 'query{r:self{gotSet{_id introduction coinPrice isGot isRanked noter{username}musicTitle composerName playCount chart{_id difficultyClass difficultyValue}}}}'}
@@ -63,7 +71,7 @@ class Query:
                     chart = [
                         Chart(_id=i["_id"],difficultyClass=i["difficultyClass"],difficultyValue=i["difficultyValue"])
                         for i in c["chart"]
-                        ],
+                    ],
                     noter = Noter(username=c["noter"]["userName"])
                 )
             )
@@ -78,24 +86,56 @@ class Query:
         user_id = auth.security_manager.user_token_checker(info.context, return_id=True)
         print(user_id)
 
-        local_chart = await store.get_local_set(user_id)
-        for c in local_chart:
-            if _id == c["_id"]:
-                return Set(
-                    _id = c["_id"],
-                    musicTitle = c["musicTitle"],
-                    introduction = c["introduction"],
-                    coinPrice = 0,
-                    isGot = True,
-                    isRanked = False,
-                    composerName = c["composerName"],
-                    playCount = 0,
-                    chart = [
-                        Chart(_id=i["_id"],difficultyClass=i["difficultyClass"],difficultyValue=i["difficultyValue"])
-                        for i in c["chart"]
+        if _id[2:7] == "local" and _id[0] == "0":
+            local_chart = await store.get_local_set(user_id)
+            for c in local_chart:
+                if _id == c["_id"]:
+                    return Set(
+                        _id = c["_id"],
+                        musicTitle = c["musicTitle"],
+                        introduction = c["introduction"],
+                        coinPrice = 0,
+                        isGot = True,
+                        isRanked = False,
+                        composerName = c["composerName"],
+                        playCount = 0,
+                        chart = [
+                            Chart(_id=i["_id"],difficultyClass=i["difficultyClass"],difficultyValue=i["difficultyValue"])
+                            for i in c["chart"]
                         ],
-                    noter = Noter(username=c["noter"]["userName"])
-                )
+                        noter = Noter(username=c["noter"]["userName"])
+                    )
+        else:
+            c = await store.get_set_chart(_id)
+            return Set(
+                _id = c["_id"],
+                musicTitle = c["musicTitle"],
+                introduction = c["introduction"],
+                coinPrice = 0,
+                isGot = True,
+                isRanked = c["isRanked"],
+                composerName = c["composerName"],
+                playCount = 0,
+                chart = [
+                    Chart(_id=i["_id"],difficultyClass=i["difficultyClass"],difficultyValue=i["difficultyValue"])
+                    for i in c["chart"]
+                ],
+                noter = Noter(username=c["noter"]["userName"])
+            ) if c != [] else Set()
+
+    @strawberry.field
+    # {'query': '{r:gameSetting{appVer}}'}
+    # Discription: 会在打开本地谱面列表时请求
+    async def gameSetting(self) -> gameVersion:
+        return gameVersion
+
+    @strawberry.field
+    # Discription: Should be called as mutation
+    def loginUser(self, 
+            username: Optional[str], 
+            password: Optional[str]) -> User:
+        return User
+
 
 @strawberry.type
 class Mutation:
@@ -107,4 +147,4 @@ class Mutation:
             password: Optional[str]) -> User:
         return await auth.login(username, password, User())
 
-
+    

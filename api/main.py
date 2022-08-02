@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, FileResponse, Response
 import uvicorn
-import httpx
 
 from __init__ import *
 
@@ -12,28 +11,22 @@ else:
 
 import user.auth as auth
 import user.profile as profile
+import res.download as download
+import res.info as chart_info
+import time, random
 
 # For game resource distribution
 # Public distribute
-@app.get("/download/cover/480x270_jpg/{_id}")
-async def handle():
-    return RedirectResponse("http://192.168.5.4:5666/test123",status_code=302)
-
 @app.get("/download/avatar/256x256_jpg/{_id}")
 async def handle():
-    return RedirectResponse("http://192.168.5.4:5666/test123",status_code=302)
-
-@app.get("/download/music/encoded/")
-async def handle(request: Request):
-    return
+    return RedirectResponse("http://127.0.0.1:10442/")
 
 # Local distribute
     
 @app.get("/download/{info:path}")
 async def local_cover_distribute(request: Request, info: str):
-    result = httpx.post("http://127.0.0.1:{}/internal/check_login".format(str(conf["game_port"])),
-        json={"token":request.headers.get("x-soudayo")}).json()
-    if result["status"] == 403:
+    result = await auth.in_game_check_login(request.headers.get("x-soudayo"))
+    if result == 403:
         return Response(content="Invalid token.", status_code=403)
 
     info = info.split("/")
@@ -42,8 +35,39 @@ async def local_cover_distribute(request: Request, info: str):
         local_ip = (await profile.get_user_info(result["_id"]))["local_ip"]
         return RedirectResponse("http://{}:10442/{}".format(local_ip,"/".join(info)),status_code=302)
 
+    id = info[-1]
+    del info[-1]
+    res_type = "/".join(info)
 
-    return Response(status_code=404)
+    r = {"status":404}
+    if res_type == "music/encoded":
+        r = download.get_download_link("set/{}/{}m.mp3.rnx".format(id,id))
+    elif res_type == "cover/encoded":
+        r = download.get_download_link("set/{}/{}c.jpg.rnx".format(id,id))
+    elif res_type == "preview/encoded":
+        r = download.get_download_link("set/{}/{}p.mp3.rnx".format(id,id))
+    elif res_type == "chart/encoded":
+        try:
+            r = download.get_download_link("set/{}/{}.xml.rnx".format(await chart_info.get_chart_set(id),id))
+        except Exception as e:
+            real_id = id.split(";")[0]
+            r = download.get_download_link("set/{}/{}.xml.rnx".format(await chart_info.get_chart_set(real_id),real_id))
+    #elif res_type == "cover/480x270_jpg":
+    #   r = download.get_download_link("cover_480x270_jpg/{}.jpg".format(id),pic=True)"""
+    elif res_type == "cover/480x270_jpg":
+        try:
+            info = (await chart_info.get_set_chart(id))["cover_preview"]
+            url = info[random.randint(0,len(info)-1)]
+            return RedirectResponse(url,status_code=302)
+        except:
+            Response(status_code=403)
+        #return RedirectResponse("https://cdn2.terrace.ink/download/cover/480x270_jpg/"+id,status_code=302)
+    elif res_type == "avatar/256x256_jpg":
+        r = download.get_download_link("avatar/{}.jpg".format(id))
+    
+
+    return RedirectResponse(r["result"],status_code=302) if r["status"] == 200 \
+            else Response(status_code=r["status"] )
 
 # For game data management
 # User
