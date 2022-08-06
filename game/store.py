@@ -7,6 +7,7 @@ async def get_store_set(skip,limit,ranked=False,unranked=False,rev_date=False,se
     for i in range(0,32):
         reserved = r'~!@#$%^&*()_+{}|:"<M>?`-=[]\;,./'
         search = search.replace(reserved[i]," ")
+        search = search.lower()
 
     q = [
         {"$skip":skip},
@@ -43,7 +44,12 @@ async def get_chart_set(_id):
     return doc["set_id"] if doc != None else None
 
 
+
 # Private
+async def get_user_profile(_id):
+    doc = await db["User"].find_one({"_id":ObjectId(_id)})
+    return doc if doc != None else []
+
 async def get_local_set(_id):
     doc = await db["User"].find_one({"_id":ObjectId(_id)})
     if doc == None:
