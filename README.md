@@ -1,4 +1,5 @@
 # Pynamite
+# Deprecation Warning: 本项目因代码质量和其它原因将停止维护，如非必要请使用其它实现。
 A game server for the game Dynamite, written by Python.   
 用 Python 实现的 Dynamite 游戏服务器，全异步
 # Detail
